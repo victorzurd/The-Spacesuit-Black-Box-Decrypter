@@ -56,7 +56,7 @@ int main() {
         if (opcion == 1) {
             FILE *archivo_leer = fopen("telemetria.bin", "rb");
             if (archivo_leer == NULL) {
-                printf("🚨 Error al abrir el archivo para lectura.\n");
+                printf("Error al abrir el archivo para lectura.\n");
                 return 1;
             }
 
@@ -92,7 +92,7 @@ int main() {
             fwrite(&oxigeno_maximo, sizeof(char), 1, archivo_mod);
             fclose(archivo_mod);
 
-            printf("\n✅ [SOPORTE VITAL]: Oxígeno inyectado con éxito en el archivo binario.\n");
+            printf("\n[SOPORTE VITAL]: Oxígeno inyectado con éxito en el archivo binario.\n");
         }else if (opcion == 0) {
             printf("Cerrando terminal de la misión. ¡Buena suerte, colono!\n");
             continuar = 0;
@@ -102,7 +102,7 @@ int main() {
             FILE *archivo_mod = fopen("telemetria.bin", "rb+");
             
             if (archivo_mod == NULL) {
-                printf("🚨 Error: No se pudo acceder al sistema de archivos del traje.\n");
+                printf("Error: No se pudo acceder al sistema de archivos del traje.\n");
                 return 1;
             }
 
@@ -116,7 +116,7 @@ int main() {
             fwrite(&temperatura_deseada, sizeof(char), 1, archivo_mod);
             fclose(archivo_mod);
 
-            printf("\n✅ [SOPORTE VITAL]: Temperatura ajustada con éxito en el archivo binario.\n");
+            printf("\n[SOPORTE VITAL]: Temperatura ajustada con éxito en el archivo binario.\n");
         }
         else {
             printf("Opción no válida. Cerrando terminal de la misión.\n");
