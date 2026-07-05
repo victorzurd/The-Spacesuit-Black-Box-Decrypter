@@ -18,7 +18,7 @@ int main() {
         fclose(archivo_escribir);
         printf("[SISTEMA]: Archivo de telemetría de fábrica creado.\n");
     } else {
-        // Si ya existe, lo cerramos y dejamos los datos que tenga (¡incluido tu 100%!)
+        // Si ya existe, lo cerramos y dejamos los datos que tenga
         fclose(archivo_verificar);
     } // Lo cerramos para asegurarnos de que los datos se guarden en el disco
 
