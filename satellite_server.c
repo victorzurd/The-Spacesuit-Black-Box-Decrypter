@@ -58,34 +58,45 @@ int main() {
     }
 
     printf("[SATÉLITE]: En órbita. Escuchando señales en el puerto %d...\n", PUERTO);
+    while (1) {
+        if ((nuevo_socket = accept(servidor_fd, (struct sockaddr *)&direccion, (socklen_t*)&addrlen)) < 0) {
+            perror("Error en Accept");
+            exit(EXIT_FAILURE);
+        }
 
-    if ((nuevo_socket = accept(servidor_fd, (struct sockaddr *)&direccion, (socklen_t*)&addrlen)) < 0) {
-        perror("Error en Accept");
-        exit(EXIT_FAILURE);
-    }
+        printf("[SATÉLITE]: ¡Conexión establecida con una antena de la colonia!\n");
 
-    printf("[SATÉLITE]: ¡Conexión establecida con una antena de la colonia!\n");
+        
+        int bytes_leidos = recv(nuevo_socket, (char*)&datos_recibidos, sizeof(struct TelemetriaTraje), 0);
 
-    // Corregido: Convertido a (char*)&datos_recibidos para Windows
-    int bytes_leidos = recv(nuevo_socket, (char*)&datos_recibidos, sizeof(struct TelemetriaTraje), 0);
+        if (bytes_leidos > 0) {
+            if(datos_recibidos.nivel_oxigeno < 20 || datos_recibidos.temperatura > 40) {
+                printf("[SATÉLITE]: ALERTA CRÍTICA: Condiciones de vida comprometidas para el colono #%d\n", datos_recibidos.codigo_colono);
+            } else {
+                printf("[SATÉLITE]: Condiciones de vida estables para el colono #%d\n", datos_recibidos.codigo_colono);
+            }
+            printf("\n=== TELEMETRÍA INTERPLANETARIA RECIBIDA VIA TCP ===\n");
+            printf("ID del Colono   : #%d\n", datos_recibidos.codigo_colono);
+            printf("Nivel de Oxígeno: %d%%\n", datos_recibidos.nivel_oxigeno);
+            printf("Temperatura     : %d Grados Celsius\n", datos_recibidos.temperatura);
+            printf("===================================================\n\n");
+        }
+    
 
-    if (bytes_leidos > 0) {
-        printf("\n=== TELEMETRÍA INTERPLANETARIA RECIBIDA VIA TCP ===\n");
-        printf("ID del Colono   : #%d\n", datos_recibidos.codigo_colono);
-        printf("Nivel de Oxígeno: %d%%\n", datos_recibidos.nivel_oxigeno);
-        printf("Temperatura     : %d Grados Celsius\n", datos_recibidos.temperatura);
-        printf("===================================================\n\n");
-    }
-
-#ifdef _WIN32
-    closesocket(nuevo_socket);
-    closesocket(servidor_fd);
-    WSACleanup();
-#else
-    close(nuevo_socket);
-    close(servidor_fd);
-#endif
+        #ifdef _WIN32
+            closesocket(nuevo_socket);
+        #else
+            close(nuevo_socket);
+        #endif
+        
+    } 
+    #ifdef _WIN32
+        closesocket(servidor_fd);
+        WSACleanup();
+    #else
+        close(servidor_fd);
+    #endif
+    
     printf("📡 [SATÉLITE]: Transmisión finalizada. Cerrando canal.\n");
-
     return 0;
 }
