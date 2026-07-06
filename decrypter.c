@@ -24,7 +24,7 @@ int main() {
 
 
     // =====================================================================
-    // PASO 2: LEER LA CAJA NEGRA (Tu decodificador)
+    // PASO 2: LEER LA CAJA NEGRA 
     // =====================================================================
     FILE *archivo_leer = fopen("telemetria.bin", "rb");
     if (archivo_leer == NULL) {

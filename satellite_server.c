@@ -40,7 +40,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    // Corregido: Convertido a (const char*)&opt para Windows
+    
     setsockopt(servidor_fd, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(opt));
 
     direccion.sin_family = AF_INET;

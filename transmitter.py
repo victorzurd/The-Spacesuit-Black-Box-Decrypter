@@ -13,7 +13,7 @@ oxigeno = 92          # 1 byte (char en C)
 temperatura = 19      # 1 byte (char en C)
 id_colono = 10001    # 2 bytes (short en C)
 
-# 2. EL TRUCO DE BAJO NIVEL: Empaquetar los datos en formato binario puro
+# 2.Empaquetar los datos en formato binario puro
 # Usamos la librería 'struct' con el formato 'bbH':
 # '<' = Little-Endian (formato estándar de procesadores modernos)
 # 'b' = signed char (1 byte) -> Oxígeno
