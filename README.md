@@ -1,146 +1,116 @@
-# Satellite-C · Spacesuit Telemetry Toolkit (Misión Ares-V)
+<div align="center">
 
-Conjunto de herramientas en **C puro** y **Python** para el tratamiento de telemetría de trajes espaciales, sin frameworks ni dependencias externas. Incluye dos componentes independientes:
+# 🚀 Satellite-C
 
-- **`decrypter`**: utilidad de consola que lee y modifica en caliente un registro binario crudo (`telemetria.bin`) usando acceso directo por *offset*.
-- **`satellite_server` + `transmitter.py`**: pareja cliente/servidor sobre **sockets TCP** que transmite tramas binarias de telemetría y evalúa en tiempo real si las constantes vitales del colono son críticas.
+### Caja negra y telemetría de trajes espaciales · Misión Ares-V
 
-El proyecto trabaja cerca del sistema operativo: estructuras empaquetadas a nivel de byte, E/S binaria con `fopen`/`fread`/`fwrite`/`fseek` y programación de sockets (Berkeley sockets / Winsock).
+Herramientas educativas en **C** y **Python** para leer, modificar y transmitir
+telemetría binaria de un traje espacial mediante TCP.
 
----
+<p>
+  <img src="https://img.shields.io/badge/C-GCC%20%2F%20MinGW-00599C?style=for-the-badge&logo=c&logoColor=white" alt="C">
+  <img src="https://img.shields.io/badge/Python-3.6%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/Network-TCP%20%2F%20IPv4-0B7285?style=for-the-badge" alt="TCP IPv4">
+  <img src="https://img.shields.io/badge/Dependencies-0-2F9E44?style=for-the-badge" alt="Sin dependencias">
+</p>
 
-## 1. Características principales
+</div>
 
-- **Lectura y edición binaria por offset**: modifica un único byte del fichero (`fseek` + `fwrite` en modo `rb+`) sin reescribir el registro completo.
-- **Autoinicialización**: si `telemetria.bin` no existe, se genera con valores de fábrica (O₂ 85 %, 22 °C, ID `99999`).
-- **Terminal interactiva** con protocolos de emergencia: recarga de oxígeno al 100 % y calibración de temperatura a 25 °C.
-- **Servidor TCP de telemetría** (puerto `8080`) con clasificación automática de estado:
-  - `ALERTA CRÍTICA` si **O₂ < 20 %** o **temperatura > 40 °C**.
-  - `Condiciones estables` en cualquier otro caso.
-- **Cliente emisor en Python** que serializa la trama con `struct.pack` en formato binario compacto (little-endian).
-- **Estructuras empaquetadas** (`__attribute__((packed))`) para un mapeo determinista de bytes, sin padding.
-- **Multiplataforma**: el servidor compila en Linux, macOS y Windows (MinGW/Winsock) mediante compilación condicional.
-- **Cero dependencias**: solo biblioteca estándar de C y de Python.
+> [!NOTE]
+> Este proyecto es una práctica de programación de bajo nivel: estructuras
+> empaquetadas, acceso directo a bytes, E/S binaria y sockets multiplataforma.
 
----
+## ✨ Qué incluye
 
-## 2. Tecnologías utilizadas
+| Componente | Propósito |
+| --- | --- |
+| `decrypter` | Terminal interactiva que inspecciona y modifica `telemetria.bin` por *offset*. |
+| `satellite_server` | Servidor TCP que recibe una trama binaria y evalúa las constantes vitales. |
+| `transmitter.py` | Simulador de antena que envía telemetría al servidor. |
 
-| Capa | Tecnología |
-| :--- | :--- |
-| Lenguaje principal | **C** (GCC, extensiones `__attribute__((packed))`) |
-| Cliente de simulación | **Python 3** (`socket`, `struct`, `time`; solo *stdlib*) |
-| Red | Sockets **TCP/IPv4** (POSIX `arpa/inet.h` · Winsock2 en Windows) |
-| E/S de ficheros | API estándar de C (`stdio.h`): `fopen`, `fread`, `fwrite`, `fseek` |
-| Toolchain | GCC / MinGW (x86) |
-| Entorno de desarrollo | VS Code (`C/C++ Runner`, depuración con GDB) |
-
----
-
-## 3. Estructura del proyecto
+### Flujo de la misión
 
 ```text
-Satellite-C/
-├── decrypter.c            # Terminal de ingeniería: lectura/edición de telemetria.bin
-├── satellite_server.c     # Servidor TCP receptor de telemetría (puerto 8080)
-├── transmitter.py         # Cliente TCP emisor de telemetría simulada
-├── telemetria.bin         # Registro binario (se autogenera si no existe)
-├── decrypter.exe          # Binario Windows precompilado (PE32, x86)
-├── satellite_server.exe   # Binario Windows precompilado (PE32, x86)
-├── .vscode/               # Configuración de IntelliSense, depuración y warnings
-└── README.md
+┌────────────────────┐       TCP · 4 bytes       ┌────────────────────┐
+│  transmitter.py    │ ───────────────────────▶ │ satellite_server    │
+│  Antena de colonia │                          │ Satélite · :8080   │
+└────────────────────┘                          └────────────────────┘
+
+┌────────────────────┐       lectura / escritura
+│  decrypter         │ ───────────────────────▶ telemetria.bin
+│  Terminal local    │          binaria
+└────────────────────┘
 ```
 
-### Formatos binarios
+## 🚀 Inicio rápido
 
-El proyecto maneja **dos formatos distintos**, ambos *little-endian* y sin *padding*.
+### 1. Compilar
 
-**a) Registro en disco: `telemetria.bin`** (`decrypter.c`, 6 bytes)
-
-| Offset | Tipo | Campo | Descripción |
-| :--- | :--- | :--- | :--- |
-| `0x00` | `char` (1 B) | `nivel_oxigeno` | Porcentaje de O₂ restante (0–100). |
-| `0x01` | `char` (1 B) | `temperatura` | Temperatura interna en °C. |
-| `0x02` | `int` (4 B) | `codigo_colono` | ID único del colono. |
-
-**b) Trama de red TCP** (`satellite_server.c` / `transmitter.py`, 4 bytes)
-
-| Offset | Tipo C | Formato `struct` (Python) | Campo |
-| :--- | :--- | :--- | :--- |
-| `0x00` | `char` (1 B) | `b` | `nivel_oxigeno` |
-| `0x01` | `char` (1 B) | `b` | `temperatura` |
-| `0x02` | `short` (2 B) | `H` | `codigo_colono` |
-
-Formato completo en Python: `struct.pack("<bbH", oxigeno, temperatura, id_colono)`.
-
----
-
-## 4. Requisitos previos e Instalación
-
-### Requisitos
-
-| Componente | Versión / notas |
-| :--- | :--- |
-| **GCC** o compatible (Clang) | Obligatorio: el código usa extensiones de GCC (`packed`). **MSVC no está soportado.** |
-| **Python** | 3.6 o superior (solo para `transmitter.py`; no requiere `pip install`) |
-| **Git** | Para clonar el repositorio |
-| **MinGW** | Solo en Windows (aporta `gcc` y `libws2_32`) |
-
-### Instalación en Linux / macOS
+#### Linux / macOS
 
 ```bash
-# 1. Clonar el repositorio
 git clone https://github.com/victorzurd/The-Spacesuit-Black-Box-Decrypter.git
 cd The-Spacesuit-Black-Box-Decrypter
 
-# 2. Compilar los dos ejecutables (recomendado: activar warnings)
 gcc -Wall -Wextra -O2 decrypter.c -o decrypter
 gcc -Wall -Wextra -O2 satellite_server.c -o satellite_server
-
-# 3. Verificar Python
-python3 --version
 ```
 
-### Instalación en Windows (MinGW)
+#### Windows · MinGW
 
 ```powershell
 git clone https://github.com/victorzurd/The-Spacesuit-Black-Box-Decrypter.git
 cd The-Spacesuit-Black-Box-Decrypter
 
-gcc decrypter.c -o decrypter.exe
-gcc satellite_server.c -o satellite_server.exe -lws2_32
-
-# Opcional: habilitar UTF-8 en consola para visualizar correctamente tildes y emojis
-chcp 65001
+gcc -Wall -Wextra -O2 decrypter.c -o decrypter.exe
+gcc -Wall -Wextra -O2 satellite_server.c -o satellite_server.exe -lws2_32
 ```
 
-> **Nota:** `-lws2_32` es imprescindible en Windows para enlazar Winsock. El repositorio incluye `.exe` precompilados (x86) que pueden ejecutarse directamente.
+> En Windows, `-lws2_32` es necesario para enlazar Winsock. También se
+> incluyen ejecutables precompilados para x86.
 
----
+### 2. Ejecutar el servidor
 
-## 5. Variables de entorno
+En una primera terminal:
 
-**No aplica.** El proyecto no lee variables de entorno ni ficheros de configuración. Los parámetros están definidos como constantes en el código fuente y se modifican editando y recompilando:
+```bash
+./satellite_server
+```
 
-| Constante | Fichero | Valor por defecto | Descripción |
-| :--- | :--- | :--- | :--- |
-| `PUERTO` | `satellite_server.c` | `8080` | Puerto TCP de escucha del servidor. |
-| `PUERTO` | `transmitter.py` | `8080` | Puerto TCP al que se conecta el cliente (debe coincidir con el servidor). |
-| `SATELLITE_IP` | `transmitter.py` | `127.0.0.1` | Dirección IP del servidor. |
-| `oxigeno`, `temperatura`, `id_colono` | `transmitter.py` | `92`, `19`, `10001` | Valores de telemetría simulada a transmitir. |
-| Umbrales de alerta | `satellite_server.c` | O₂ `< 20`, Temp `> 40` | Condición de `ALERTA CRÍTICA`. |
+### 3. Transmitir telemetría
 
----
+En una segunda terminal:
 
-## 6. Ejemplo de uso / Protocolo de red
+```bash
+python3 transmitter.py
+```
 
-Este proyecto **no expone una API HTTP**: la comunicación es un protocolo TCP binario propio, de un solo sentido (cliente → servidor) y sin respuesta.
+En Windows, utiliza `python transmitter.py` si `python3` no está disponible.
 
-### 6.1. Terminal de ingeniería (`decrypter`)
+### 4. Abrir la caja negra
 
 ```bash
 ./decrypter
 ```
+
+Si `telemetria.bin` no existe, `decrypter` lo crea con estos valores:
+
+| Oxígeno | Temperatura | ID del colono |
+| ---: | ---: | ---: |
+| `85 %` | `22 °C` | `99999` |
+
+## 🛰️ Terminal de ingeniería
+
+`decrypter` trabaja sobre el fichero sin reescribir el registro completo:
+
+| Opción | Acción |
+| ---: | --- |
+| `0` | Salir del terminal |
+| `1` | Mostrar la telemetría actual |
+| `2` | Recargar oxígeno al `100 %` |
+| `3` | Ajustar la temperatura a `25 °C` |
+
+Ejemplo:
 
 ```text
 === TERMINAL DE INGENIERÍA - MISIÓN ARES V ===
@@ -157,77 +127,112 @@ Temperatura     : 22 Grados Celsius
 -----------------------------
 ```
 
-| Opción | Acción | Operación sobre el fichero |
-| :--- | :--- | :--- |
-| `0` | Salir | — |
-| `1` | Mostrar telemetría | `fread` de 6 bytes |
-| `2` | Recargar O₂ al 100 % | `fseek(0)` + `fwrite` de 1 byte |
-| `3` | Fijar temperatura a 25 °C | `fseek(1)` + `fwrite` de 1 byte |
+## 📡 Protocolo TCP
 
-Cualquier otra opción cierra el terminal.
+El servidor escucha en `0.0.0.0:8080` y espera una única trama por conexión.
+No existe respuesta del servidor: el cliente transmite y cierra el socket.
 
-### 6.2. Servidor y transmisor por TCP
+### Formato de la trama
 
-Abre **dos terminales** en la carpeta del proyecto.
+La trama de red ocupa **4 bytes**, está empaquetada en *little-endian* y se
+representa en Python con `struct.pack("<bbH", ...)`.
 
-**Terminal 1: iniciar el servidor (satélite)**
+| Offset | Tamaño | Campo | Tipo |
+| ---: | ---: | --- | --- |
+| `0x00` | 1 byte | `nivel_oxigeno` | `char` con signo |
+| `0x01` | 1 byte | `temperatura` | `char` con signo |
+| `0x02` | 2 bytes | `codigo_colono` | `unsigned short` |
 
-```bash
-./satellite_server
-```
+El servidor clasifica la telemetría así:
 
-**Terminal 2: enviar telemetría (antena de la colonia)**
+- 🔴 **ALERTA CRÍTICA**: oxígeno `< 20 %` o temperatura `> 40 °C`.
+- 🟢 **Condiciones estables**: cualquier otro valor.
 
-```bash
-python3 transmitter.py
-```
+### Enviar una trama manualmente
 
-**Salida del servidor:**
-
-```text
-[SATÉLITE]: En órbita. Escuchando señales en el puerto 8080...
-[SATÉLITE]: ¡Conexión establecida con una antena de la colonia!
-[SATÉLITE]: Condiciones de vida estables para el colono #10001
-
-=== TELEMETRÍA INTERPLANETARIA RECIBIDA VIA TCP ===
-ID del Colono   : #10001
-Nivel de Oxígeno: 92%
-Temperatura     : 19 Grados Celsius
-===================================================
-```
-
-Para provocar una alerta, edita `oxigeno = 15` en `transmitter.py` y vuelve a ejecutarlo:
-
-```text
-[SATÉLITE]: ALERTA CRÍTICA: Condiciones de vida comprometidas para el colono #10001
-```
-
-### 6.3. Especificación del protocolo
-
-| Propiedad | Valor |
-| :--- | :--- |
-| Transporte | TCP / IPv4 |
-| Puerto | `8080` (escucha en todas las interfaces, `INADDR_ANY`) |
-| Conexión | Una trama por conexión; el servidor cierra el socket tras leerla |
-| Tamaño de trama | 4 bytes (`<bbH`) |
-| Respuesta del servidor | Ninguna |
-
-Cualquier cliente que respete la trama es compatible. Ejemplo sin usar `transmitter.py`:
+Con el servidor ejecutándose, puedes probarlo sin `transmitter.py`:
 
 ```bash
 python3 -c "import socket,struct; s=socket.create_connection(('127.0.0.1',8080)); s.sendall(struct.pack('<bbH',92,19,10001)); s.close()"
 ```
 
----
+Para forzar una alerta, cambia estos valores en `transmitter.py`:
 
-## 7. Limitaciones conocidas
+```python
+oxigeno = 15
+temperatura = 19
+```
 
-Aspectos detectados durante el análisis y comprobados al compilar y ejecutar el código:
+## 🧱 Estructura del proyecto
 
-- **Formatos de registro y de trama inconsistentes**: `decrypter.c` usa `int` (4 B) para `codigo_colono` y `satellite_server.c` usa `short` (2 B). Además, el servidor lo interpreta con signo mientras el emisor lo empaqueta sin signo (`H`), de modo que IDs superiores a `32767` se muestran negativos (por ejemplo, `40000` → `#-25536`).
-- **`telemetria.bin` versionado es obsoleto**: el fichero incluido en el repositorio tiene 8 bytes (layout antiguo con *padding*), incompatible con la estructura actual de 6 bytes; `decrypter` mostraría un ID corrupto. **Solución:** elimínalo (`rm telemetria.bin`) y se regenerará al ejecutar `decrypter`.
-- **Sin verificación de integridad**: el contexto del proyecto menciona un *checksum*, pero no está implementado en el código.
-- **Servidor iterativo y de un solo hilo**: atiende una conexión cada vez, realiza un único `recv` (sin bucle de lectura para tramas parciales) y no tiene parada limpia; el bucle es infinito y se detiene con `Ctrl+C`.
-- **Sin autenticación ni cifrado**: el servidor escucha en `0.0.0.0`. No lo expongas a redes no confiables.
-- **Entrada de usuario sin validar**: `scanf` en `decrypter` no comprueba entradas no numéricas.
-- **Binarios en el repositorio**: los `.exe` versionados deberían excluirse con `.gitignore` y generarse localmente.
+```text
+Satellite-C/
+├── decrypter.c            # Terminal y acceso binario a la caja negra
+├── satellite_server.c     # Servidor TCP de telemetría
+├── transmitter.py         # Cliente TCP y simulador de telemetría
+├── telemetria.bin         # Registro binario local
+├── decrypter.exe          # Binario Windows precompilado
+├── satellite_server.exe   # Binario Windows precompilado
+├── .vscode/               # Configuración de VS Code
+└── README.md
+```
+
+### Registro local `telemetria.bin`
+
+El registro de disco ocupa **6 bytes** y utiliza un formato diferente al de la
+trama de red:
+
+| Offset | Tamaño | Campo |
+| ---: | ---: | --- |
+| `0x00` | 1 byte | `nivel_oxigeno` |
+| `0x01` | 1 byte | `temperatura` |
+| `0x02` | 4 bytes | `codigo_colono` (`int`) |
+
+`decrypter` utiliza `fseek` y `fwrite` para actualizar únicamente los bytes
+correspondientes al oxígeno o a la temperatura.
+
+## 🛠️ Requisitos
+
+- **GCC** o Clang compatible con `__attribute__((packed))`.
+- **Python 3.6 o superior** para `transmitter.py`.
+- **MinGW** en Windows para compilar con GCC y enlazar Winsock.
+- **Git** para clonar el repositorio.
+
+No hace falta instalar paquetes de Python: el emisor utiliza únicamente la
+biblioteca estándar (`socket`, `struct` y `time`).
+
+## ⚙️ Configuración
+
+Los parámetros están definidos directamente en el código:
+
+| Parámetro | Archivo | Valor |
+| --- | --- | ---: |
+| Puerto del servidor | `satellite_server.c` | `8080` |
+| IP de destino | `transmitter.py` | `127.0.0.1` |
+| Puerto de destino | `transmitter.py` | `8080` |
+| Telemetría simulada | `transmitter.py` | `92 %`, `19 °C`, `10001` |
+| Umbrales críticos | `satellite_server.c` | O₂ `< 20`, temp. `> 40` |
+
+## ⚠️ Limitaciones conocidas
+
+- El registro local usa un `int` de 4 bytes para el ID, mientras que la trama
+  de red usa un `short` de 2 bytes.
+- El servidor realiza un único `recv` por conexión, por lo que no reensambla
+  tramas TCP parciales.
+- El servidor es iterativo, no tiene autenticación ni cifrado y escucha en
+  todas las interfaces. **No lo expongas a redes no confiables.**
+- La entrada numérica de `decrypter` no valida errores de `scanf`.
+- El `telemetria.bin` incluido puede proceder de un layout antiguo de 8 bytes.
+  Si muestra datos corruptos, elimínalo y deja que `decrypter` lo regenere:
+
+  ```bash
+  rm telemetria.bin
+  ```
+
+- Los ejecutables `.exe` están incluidos como referencia; para desarrollo se
+  recomienda compilarlos localmente.
+
+## 📄 Licencia
+
+Este repositorio no declara actualmente una licencia. Consulta al propietario
+antes de redistribuirlo o incorporarlo a otro proyecto.
